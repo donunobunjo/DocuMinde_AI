@@ -1,21 +1,61 @@
-from langchain_huggingface import HuggingFaceEmbeddings
+import os
+
+from dotenv import load_dotenv
+from huggingface_hub import InferenceClient
 
 
-def get_embedding_function():
+load_dotenv()
+
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "BAAI/bge-small-en-v1.5"
+)
+
+
+client = InferenceClient(
+    token=HF_TOKEN,
+    provider="hf-inference",
+    timeout=60
+)
+
+
+class HuggingFaceEmbeddings:
     """
-    Creates the embedding model used to convert document
-    chunks and user questions into vectors.
+    Generate embeddings using Hugging Face Inference API.
 
-    The embedding model runs as part of the backend.
-    It does not require Ollama.
+    The embedding model runs remotely, so the Render
+    backend does not need to load a local ML model.
     """
 
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={
-            "device": "cpu"
-        },
-        encode_kwargs={
-            "normalize_embeddings": True
-        }
-    )
+    def embed_documents(self, texts):
+        """
+        Convert multiple document chunks into vectors.
+        """
+
+        if not texts:
+            return []
+
+        result = client.feature_extraction(
+            texts,
+            model=EMBEDDING_MODEL,
+            normalize=True
+        )
+
+        return result.tolist()
+
+
+    def embed_query(self, text):
+        """
+        Convert one user question into a vector.
+        """
+
+        result = client.feature_extraction(
+            text,
+            model=EMBEDDING_MODEL,
+            normalize=True
+        )
+
+        return result.tolist()

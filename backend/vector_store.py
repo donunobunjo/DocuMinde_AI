@@ -1,8 +1,17 @@
 from langchain_community.vectorstores import Chroma
-from embeddings import get_embedding_function
+
+from embeddings import HuggingFaceEmbeddings
 
 
 CHROMA_PATH = "chroma_db"
+
+
+def get_embedding_function():
+    """
+    Create the Hugging Face embedding client.
+    """
+
+    return HuggingFaceEmbeddings()
 
 
 def get_vector_store(session_id: str):
