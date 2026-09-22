@@ -1,5 +1,79 @@
+# =========================================================
+# Python
+# =========================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+backend/.venv/
+backend/venv/
+backend/env/
+
+# Python environment files
 backend/.env
+
+
+# =========================================================
+# ChromaDB / Vector Database
+# =========================================================
+
+chroma_db/
+backend/chroma_db/
+
+# SQLite / local database files
+*.sqlite
+*.sqlite3
+*.db
+
+
+# =========================================================
+# Node / React / Vite
+# =========================================================
+
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# NPM logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/pnpm-debug.log*
+
+
+# =========================================================
+# Frontend environment files
+# =========================================================
+
 frontend/.env
-backend/.venv/...
-frontend/node_modules/...
-chroma_db/...
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+
+# =========================================================
+# IDE / Editors
+# =========================================================
+
+.vscode/
+.idea/
+*.iml
+
+
+# =========================================================
+# Operating System
+# =========================================================
+
+.DS_Store
+Thumbs.db
+
+
+# =========================================================
+# Logs / Temporary files
+# =========================================================
+
+*.log
+*.tmp
+*.temp
