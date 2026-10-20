@@ -12,7 +12,7 @@ load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 EMBEDDING_MODEL = "gemini-embedding-001"
-EMBEDDING_DIMENSION = 384
+EMBEDDING_DIMENSION = 768
 
 if not GOOGLE_API_KEY:
     raise RuntimeError(
