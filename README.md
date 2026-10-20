@@ -8,30 +8,12 @@
 
 A full-stack Retrieval-Augmented Generation (RAG) application built with React, FastAPI, LangChain, ChromaDB, and Hugging Face Inference Providers.
 
-[Live Demo](YOUR_FRONTEND_URL) · [Backend API](YOUR_BACKEND_URL) · [API Docs](YOUR_BACKEND_URL/docs)
+[Live Demo](https://documind-ai-vavu.onrender.com/) 
 
 </div>
 
 ---
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Live Demo](#live-demo)
-- [How It Works](#how-it-works)
-- [Architecture](#architecture)
-- [Technology Stack](#technology-stack)
-- [Project Configuration](#project-configuration)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [API Documentation](#api-documentation)
-- [Deployment](#deployment)
-- [Limitations and Security Notes](#limitations-and-security-notes)
-- [Future Improvements](#future-improvements)
-- [Contributing](#contributing)
-- [Author](#author)
-- [Acknowledgements](#acknowledgements)
 
 ## Overview
 
@@ -68,13 +50,10 @@ Finding specific information in long PDF documents can be slow and frustrating. 
 
 ## Live Demo
 
-Replace the placeholders below with the deployed URLs before publishing this README.
 
 | Resource | Link |
 |---|---|
-| Web application | [Open DocuMind AI](YOUR_FRONTEND_URL) |
-| Backend API | [Open API](YOUR_BACKEND_URL) |
-| Interactive API documentation | [Open Swagger UI](YOUR_BACKEND_URL/docs) |
+| Web application | [Open DocuMind AI](https://documind-ai-vavu.onrender.com/) |
 
 > **Deployment note:** Ensure the frontend's API base URL points to the deployed backend, and configure the required environment variables in the hosting dashboard.
 
@@ -83,7 +62,7 @@ Replace the placeholders below with the deployed URLs before publishing this REA
 1. **Upload a PDF.** The user selects a document in the React interface.
 2. **Extract text.** The FastAPI backend extracts text and page information using PyPDF.
 3. **Split into chunks.** LangChain's `RecursiveCharacterTextSplitter` divides the text into overlapping segments.
-4. **Generate embeddings.** The hosted `BAAI/bge-small-en-v1.5` embedding model converts text chunks into vectors.
+4. **Generate embeddings.** Initially the hosted `BAAI/bge-small-en-v1.5` embedding model converts text chunks into vectors.Later switched to `gemini-embedding-001` to save cost
 5. **Store vectors.** Chunks, embeddings, and associated metadata are stored in ChromaDB in a collection associated with the document session.
 6. **Retrieve relevant passages.** The user's question is embedded and compared with stored vectors to identify relevant chunks.
 7. **Build context.** The retrieved passages are assembled into context for the language model.
@@ -121,7 +100,7 @@ flowchart TD
 | RAG framework | LangChain |
 | PDF processing | PyPDF |
 | Vector database | ChromaDB |
-| Embeddings | `BAAI/bge-small-en-v1.5` |
+| Embeddings | `gemini-embedding-001` |
 | Language model | `openai/gpt-oss-20b` |
 | Inference | Hugging Face Inference Providers |
 | Response streaming | Server-Sent Events (SSE) |
@@ -142,7 +121,7 @@ Overlapping chunks help preserve context across chunk boundaries. These settings
 
 | Purpose | Model |
 |---|---|
-| Text embeddings | `BAAI/bge-small-en-v1.5` |
+| Text embeddings | `gemini-embedding-001` |
 | Answer generation | `openai/gpt-oss-20b` |
 
 The embedding and generation models are accessed through hosted inference services, so the application server does not need to load these models locally.
@@ -263,16 +242,6 @@ The application is designed for a split deployment:
 - **Backend:** Render Web Service
 - **Model inference:** Hugging Face Inference Providers
 
-Before deploying, check the following:
-
-1. Push the latest code to GitHub.
-2. Deploy the frontend and backend as separate Render services if that matches your setup.
-3. Set the backend's Hugging Face token in the Render environment settings.
-4. Configure the frontend to use the deployed backend URL.
-5. Configure CORS to allow requests from the deployed frontend origin.
-6. Confirm that the backend can reach the selected inference providers.
-7. Test PDF upload, retrieval, streaming, and source references in the deployed application.
-8. Update the live links at the top of this README.
 
 ## Limitations and Security Notes
 
@@ -308,28 +277,11 @@ Contributions, bug reports, and suggestions are welcome.
 3. Make and test your changes.
 4. Open a pull request with a clear description of the improvement.
 
-If you discover a bug, include steps to reproduce it and relevant error messages, while removing secrets and private document content.
 
 ## Author
 
-**Your Name**
+**Unobunjo Don**
 
-- GitHub: [Your GitHub Profile](YOUR_GITHUB_PROFILE_URL)
-- Portfolio: [Your Portfolio](YOUR_PORTFOLIO_URL)
-- LinkedIn: [Your LinkedIn Profile](YOUR_LINKEDIN_URL)
-
-Replace the placeholders with your public profile links before publishing.
-
-## Acknowledgements
-
-DocuMind AI builds on the work of the open-source and developer communities behind:
-
-- [Hugging Face](https://huggingface.co/)
-- [LangChain](https://www.langchain.com/)
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [ChromaDB](https://www.trychroma.com/)
-- [React](https://react.dev/)
-- [Vite](https://vite.dev/)
 
 ---
 
