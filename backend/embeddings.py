@@ -1,61 +1,63 @@
+
 import os
+import math
 
 from dotenv import load_dotenv
-from huggingface_hub import InferenceClient
+from google import genai
+from google.genai import types
 
 
 load_dotenv()
 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIMENSION = 384
 
-EMBEDDING_MODEL = os.getenv(
-    "EMBEDDING_MODEL",
-    "BAAI/bge-small-en-v1.5"
-)
+if not GOOGLE_API_KEY:
+    raise RuntimeError(
+        "GOOGLE_API_KEY is not configured."
+    )
 
-
-client = InferenceClient(
-    token=HF_TOKEN,
-    provider="hf-inference",
-    timeout=60
-)
+client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
-class HuggingFaceEmbeddings:
-    """
-    Generate embeddings using Hugging Face Inference API.
+def normalize_vector(vector):
+    """Normalize a vector for cosine-similarity retrieval."""
 
-    The embedding model runs remotely, so the Render
-    backend does not need to load a local ML model.
-    """
+    norm = math.sqrt(sum(value * value for value in vector))
+
+    if norm == 0:
+        return vector
+
+    return [value / norm for value in vector]
+
+
+def embed_texts(texts):
+    """Generate embeddings for one or more text inputs."""
+
+    if not texts:
+        return []
+
+    response = client.models.embed_content(
+        model=EMBEDDING_MODEL,
+        contents=texts,
+        config=types.EmbedContentConfig(
+            output_dimensionality=EMBEDDING_DIMENSION
+        )
+    )
+
+    return [
+        normalize_vector(embedding.values)
+        for embedding in response.embeddings
+    ]
+
+
+class GeminiEmbeddings:
+    """Gemini-backed embeddings compatible with Chroma."""
 
     def embed_documents(self, texts):
-        """
-        Convert multiple document chunks into vectors.
-        """
-
-        if not texts:
-            return []
-
-        result = client.feature_extraction(
-            texts,
-            model=EMBEDDING_MODEL,
-            normalize=True
-        )
-
-        return result.tolist()
-
+        return embed_texts(texts)
 
     def embed_query(self, text):
-        """
-        Convert one user question into a vector.
-        """
-
-        result = client.feature_extraction(
-            text,
-            model=EMBEDDING_MODEL,
-            normalize=True
-        )
-
-        return result.tolist()
+        return embed_texts([text])[0]
