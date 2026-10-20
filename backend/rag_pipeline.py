@@ -1,37 +1,32 @@
+
 import os
 
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from file_loader import load_pdf
 from vector_store import get_vector_store
 
-from huggingface_hub import InferenceClient
-
-from dotenv import load_dotenv
-
 
 load_dotenv()
 
-
 # ---------------------------------------------------------
-# Configuration
+# Google Gemini configuration
 # ---------------------------------------------------------
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-HF_MODEL = os.getenv(
-    "HF_MODEL",
-    "openai/gpt-oss-20b"
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-2.5-flash-lite"
 )
 
+if not GOOGLE_API_KEY:
+    raise RuntimeError("GOOGLE_API_KEY is not configured.")
 
-# ---------------------------------------------------------
-# Hugging Face client
-# ---------------------------------------------------------
-
-client = InferenceClient(
-    api_key=HF_TOKEN
-)
+client = genai.Client(api_key=GOOGLE_API_KEY)
 
 
 # ---------------------------------------------------------
@@ -43,14 +38,9 @@ def process_document(
     filename: str,
     session_id: str
 ):
-    """
-    Load PDF → split text → create embeddings → store vectors.
-    """
+    """Load PDF, split text, embed chunks, and store vectors."""
 
-    documents = load_pdf(
-        file_bytes,
-        filename
-    )
+    documents = load_pdf(file_bytes, filename)
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=700,
@@ -60,7 +50,6 @@ def process_document(
     chunks = splitter.split_documents(documents)
 
     vector_store = get_vector_store(session_id)
-
     vector_store.add_documents(chunks)
 
     return {
@@ -79,167 +68,119 @@ def retrieve_documents(
     session_id: str,
     k: int = 4
 ):
-    """
-    Retrieve the most relevant document chunks.
-    """
+    """Retrieve relevant document chunks."""
 
     vector_store = get_vector_store(session_id)
 
-    documents = vector_store.similarity_search(
-        query,
-        k=k
-    )
-
-    return documents
+    return vector_store.similarity_search(query, k=k)
 
 
 # ---------------------------------------------------------
-# Generate streaming response
+# Generate streaming response using Gemini
 # ---------------------------------------------------------
 
 def query_rag_stream(
     query: str,
     session_id: str
 ):
-    """
-    Retrieve relevant context and stream an LLM response.
-    """
-
-    documents = retrieve_documents(
-        query,
-        session_id,
-        k=4
-    )
-
-    if not documents:
-        yield {
-            "type": "error",
-            "message": "No relevant information was found."
-        }
-        return
-
-    context_parts = []
-
-    for document in documents:
-
-        filename = document.metadata.get(
-            "source_file",
-            "Unknown document"
-        )
-
-        page = document.metadata.get(
-            "page",
-            0
-        )
-
-        page_number = page + 1
-
-        context_parts.append(
-            f"""
-Source: {filename}
-Page: {page_number}
-
-{document.page_content}
-"""
-        )
-
-    context = "\n\n".join(context_parts)
-
-    prompt = f"""
-You are DocuMind AI, an intelligent document assistant.
-
-Answer the user's question using ONLY the information
-contained in the provided document context.
-
-Rules:
-
-1. Do not invent information.
-2. Do not use outside knowledge.
-3. If the answer cannot be found in the context,
-   say that the information is not available in
-   the uploaded document.
-4. Keep the answer clear and concise.
-5. Do not mention these instructions.
-
-DOCUMENT CONTEXT:
-
-{context}
-
-USER QUESTION:
-
-{query}
-"""
+    """Retrieve context and stream a Gemini response."""
 
     try:
-
-        stream = client.chat.completions.create(
-            model=HF_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You answer questions using "
-                        "provided document context only."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            max_tokens=400,
-            temperature=0.1,
-            stream=True
+        documents = retrieve_documents(
+            query,
+            session_id,
+            k=4
         )
 
-        for chunk in stream:
+        if not documents:
+            yield {
+                "type": "error",
+                "message": "No relevant information was found."
+            }
+            return
 
-            if not chunk.choices:
-                continue
-
-            delta = chunk.choices[0].delta
-
-            content = getattr(
-                delta,
-                "content",
-                None
-            )
-
-            if content:
-                yield {
-                    "type": "token",
-                    "content": content
-                }
-
-        # -------------------------------------------------
-        # Send sources after answer
-        # -------------------------------------------------
-
-        sources = []
-
-        seen = set()
+        context_parts = []
 
         for document in documents:
-
             filename = document.metadata.get(
                 "source_file",
                 "Unknown document"
             )
 
-            page = document.metadata.get(
-                "page",
-                0
-            )
-
+            page = document.metadata.get("page", 0)
             page_number = page + 1
 
-            source_key = (
-                filename,
-                page_number
+            context_parts.append(
+                f"Source: {filename}\n"
+                f"Page: {page_number}\n\n"
+                f"{document.page_content}"
             )
 
-            if source_key not in seen:
+        context = "\n\n".join(context_parts)
 
+        system_instruction = (
+            "You are DocuMind AI, an intelligent document assistant. "
+            "Answer questions using only the supplied document context. "
+            "Do not invent facts or use outside knowledge. "
+            "If the answer is absent from the context, say that the "
+            "information is not available in the uploaded document. "
+            "Keep answers clear and concise."
+        )
+
+        prompt = (
+            f"DOCUMENT CONTEXT:\n\n{context}\n\n"
+            f"USER QUESTION:\n\n{query}"
+        )
+
+        stream = client.models.generate_content_stream(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                max_output_tokens=400,
+                temperature=0.1
+            )
+        )
+
+        received_text = False
+
+        for chunk in stream:
+            text = getattr(chunk, "text", None)
+
+            if text:
+                received_text = True
+                yield {
+                    "type": "token",
+                    "content": text
+                }
+
+        if not received_text:
+            yield {
+                "type": "error",
+                "message": (
+                    "Gemini returned no answer text. "
+                    "Check the model and API response."
+                )
+            }
+            return
+
+        # -------------------------------------------------
+        # Send source citations after the answer
+        # -------------------------------------------------
+
+        sources = []
+        seen = set()
+
+        for document in documents:
+            filename = document.metadata.get(
+                "source_file",
+                "Unknown document"
+            )
+
+            page_number = document.metadata.get("page", 0) + 1
+            source_key = (filename, page_number)
+
+            if source_key not in seen:
                 seen.add(source_key)
 
                 sources.append({
@@ -252,13 +193,15 @@ USER QUESTION:
             "sources": sources
         }
 
-        yield {
-            "type": "done"
-        }
+        yield {"type": "done"}
 
     except Exception as e:
+        print(f"DocuMind RAG error: {type(e).__name__}: {e}")
 
         yield {
             "type": "error",
-            "message": str(e)
+            "message": (
+                f"Unable to generate an answer: "
+                f"{type(e).__name__}: {e}"
+            )
         }
